@@ -1,0 +1,34 @@
+{
+  "name": "@startracex/node-resolve",
+  "version": "0.0.0",
+  "description": "Node resolve algorithm",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "fmt": "dprint fmt",
+    "check": "dprint check"
+  },
+  "devDependencies": {
+    "@startracex/dev-config": "^0.2.2",
+    "dprint": "^0.50.0",
+    "typescript": "^5.8.3"
+  },
+  "keywords": [
+    "node",
+    "resolve",
+    "algorithm",
+    "exports"
+  ],
+  "author": "startracex",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/startracex/node-resolve.git"
+  },
+  "files": [
+    "*.{js,ts}+(|.map)"
+  ],
+  "packageManager": "pnpm@10.11.0"
+}
