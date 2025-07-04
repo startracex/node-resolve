@@ -22,7 +22,7 @@ export class ModuleResolver extends SubpathResolver {
 
   constructor({
     extensions,
-    isCoreModule = () => false,
+    isCoreModule,
     modulesDirectoryName = "node_modules",
     manifestFileName = "package.json",
     mainFields = ["main"],

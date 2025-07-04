@@ -66,11 +66,6 @@ func NewModuleResolver(config *ResolverConfig) *ModuleResolver {
 	if len(config.MainFields) == 0 {
 		config.MainFields = []string{"main"}
 	}
-	if config.IsCoreModule == nil {
-		config.IsCoreModule = func(string) bool {
-			return false
-		}
-	}
 	if config.FS == nil {
 		config.FS = &osFS{}
 	}
@@ -197,7 +192,7 @@ func (r *ModuleResolver) readJSON(path string) (map[string]interface{}, error) {
 }
 
 func (r *ModuleResolver) Resolve(path string, base string) string {
-	if r.Config.IsCoreModule(path) {
+	if  r.Config.IsCoreModule != nil && r.Config.IsCoreModule(path) {
 		return path
 	}
 
