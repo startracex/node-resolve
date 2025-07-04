@@ -1,6 +1,6 @@
 {
   "name": "@startracex/node-resolve",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Node resolve algorithm",
   "type": "module",
   "main": "index.js",
