@@ -11,8 +11,8 @@
     "check": "dprint check"
   },
   "devDependencies": {
-    "@startracex/dev-config": "^0.2.2",
-    "dprint": "^0.50.0",
+    "@startracex/dev-config": "^0.3.0",
+    "dprint": "^0.50.1",
     "typescript": "^5.8.3"
   },
   "keywords": [
@@ -30,5 +30,5 @@
   "files": [
     "*.{js,ts}+(|.map)"
   ],
-  "packageManager": "pnpm@10.11.0"
+  "packageManager": "pnpm@10.12.4"
 }
