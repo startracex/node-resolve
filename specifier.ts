@@ -22,7 +22,6 @@ export const parseSpecifier = (input: string): Specifier | null => {
 
   const match = path.match(regexp);
 
-  console.log(match);
   if (!match || !match[0] || !match[2]) {
     return null;
   }
