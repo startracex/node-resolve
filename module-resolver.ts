@@ -87,10 +87,7 @@ export class ModuleResolver extends SubpathResolver {
     return this.resolveFileOrDir(this.path.join(base, path));
   }
 
-  resolveModuleSpecifier(
-    { name, path }: Specifier,
-    base?: string,
-  ): string | undefined {
+  resolveModuleSpecifier({ name, path }: Specifier, base?: string): string | undefined {
     const dirs = this.modulesPaths(base, name);
     for (const dir of dirs) {
       const stat = this.stat(dir);
@@ -104,10 +101,7 @@ export class ModuleResolver extends SubpathResolver {
   }
 
   protected resolveFile(filePath: string): string | undefined {
-    const candidates = [
-      filePath,
-      ...(this.extensions || []).map((ext) => filePath + ext),
-    ];
+    const candidates = [filePath, ...(this.extensions || []).map((ext) => filePath + ext)];
     for (const file of candidates) {
       const stat = this.stat(file);
       if (!stat || stat.isDirectory()) {

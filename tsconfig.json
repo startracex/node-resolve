@@ -8,10 +8,5 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": [
-    "module-resolver.ts",
-    "subpath-resolver.ts",
-    "specifier.ts",
-    "index.ts"
-  ]
+  "include": ["module-resolver.ts", "subpath-resolver.ts", "specifier.ts", "index.ts"]
 }

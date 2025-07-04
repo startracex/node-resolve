@@ -48,10 +48,7 @@ const findWildcardMatch = (
   return bestMatch ? { key: bestMatch.key, replacement } : null;
 };
 
-const resolveMappingValue = (
-  value: Value | undefined,
-  conditions: string[],
-): string[] | null => {
+const resolveMappingValue = (value: Value | undefined, conditions: string[]): string[] | null => {
   if (!value) return null;
 
   if (typeof value === "string") {
