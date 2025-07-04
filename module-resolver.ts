@@ -6,7 +6,7 @@ export class ModuleResolver extends SubpathResolver {
   modulesDirectoryName: string;
   manifestFileName: string;
   mainFields: string[];
-  isCoreModule: (id: string) => boolean;
+  isCoreModule: (name: string) => boolean;
   path: {
     dirname: (path: string) => string;
     join: (...paths: string[]) => string;
@@ -62,10 +62,6 @@ export class ModuleResolver extends SubpathResolver {
   }
 
   resolve(path: string, base: string): string | undefined {
-    if (this.isCoreModule?.(path)) {
-      return path;
-    }
-
     if (path.startsWith("#")) {
       const paths = this.resolveImports(path);
       if (paths) {
@@ -82,6 +78,9 @@ export class ModuleResolver extends SubpathResolver {
     const spec = parseSpecifier(path);
 
     if (spec?.name) {
+      if (this.isCoreModule?.(spec.name)) {
+        return path;
+      }
       return this.resolveModuleSpecifier(spec, base);
     }
 
@@ -162,10 +161,7 @@ export class ModuleResolver extends SubpathResolver {
     return this.resolveFileOrDir(subPath);
   }
 
-  protected resolveFileOrDir(
-    subPath: string,
-    entry?: string,
-  ): string | undefined {
+  protected resolveFileOrDir(subPath: string, entry?: string): string | undefined {
     return this.resolveFile(subPath) || this.resolveDir(subPath, entry);
   }
 

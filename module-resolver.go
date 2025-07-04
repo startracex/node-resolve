@@ -192,12 +192,12 @@ func (r *ModuleResolver) readJSON(path string) (map[string]interface{}, error) {
 }
 
 func (r *ModuleResolver) Resolve(path string, base string) string {
-	if  r.Config.IsCoreModule != nil && r.Config.IsCoreModule(path) {
-		return path
-	}
-
 	spec, err := ParseSpecifier(path)
 	if err == nil && spec.Name != "" {
+		if r.Config.IsCoreModule != nil && r.Config.IsCoreModule(spec.Name) {
+			return path
+		}
+
 		return r.ResolveModuleSpecifier(*spec, base)
 	}
 
