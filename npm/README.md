@@ -1,7 +1,7 @@
 # node-resolve
 
 ```js
-import { createResolve } from "./npm/index.mjs";
+import { createResolve } from "@startracex/node-resolve";
 
 const resolve = await createResolve({
   extensions: [".js", ".ts"],
