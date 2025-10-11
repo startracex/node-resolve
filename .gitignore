@@ -1,4 +1,4 @@
 node_modules
-*.js
-*.d.ts
-*.map
+npm/*
+!npm/package.json
+!npm/README.md
