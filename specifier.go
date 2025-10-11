@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -17,7 +18,7 @@ type Specifier struct {
 var (
 	SpecifierRegex = regexp.MustCompile(`^(?:@(\w[\w-.]*)/)?(\w[\w-.]*)(/(.*))?$`)
 
-	ErrInvalidSpecifier = fmt.Errorf("resolve: invalid specifier")
+	ErrInvalidSpecifier = errors.New("resolve: invalid specifier")
 )
 
 func ParseSpecifier(input string) (*Specifier, error) {
