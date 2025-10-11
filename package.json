@@ -1,5 +1,6 @@
 {
   "type": "module",
+  "private": true,
   "scripts": {
     "build": "rollup -c && go build -o npm/main.wasm src/main.go",
     "fmt": "dprint fmt",
