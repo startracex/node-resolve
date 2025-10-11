@@ -15,7 +15,7 @@ func main() {
 	})
 	cwd, _ := os.Getwd()
 	resolved := ""
-	resolved = resolver.Resolve("./mod-file.ts", cwd) // mod-file.js
+	resolved = resolver.Resolve("./mod-file.js", cwd) // mod-file.ts
 	resolved = resolver.Resolve("typescript", cwd) // node_modules/typescript/lib/typescript.js
 }
 ```

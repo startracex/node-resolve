@@ -11,6 +11,6 @@ const resolve = await createResolve({
 });
 
 let resolved, cwd = process.cwd()
-resolved = resolve("./file.ts", cwd); // file.js
+resolved = resolve("./file.js", cwd); // file.ts
 resolved = resolve("typescript", cwd); // node_modules/typescript/lib/typescript.js
 ```
