@@ -1,0 +1,26 @@
+{
+  "name": "@startracex/node-resolve",
+  "version": "0.1.0",
+  "description": "Node resolve algorithm",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    },
+    "./*": "./*"
+  },
+  "keywords": [
+    "node",
+    "resolve",
+    "algorithm",
+    "exports"
+  ],
+  "author": "startracex",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/startracex/node-resolve.git"
+  }
+}
