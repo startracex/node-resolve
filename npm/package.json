@@ -9,6 +9,15 @@
       "import": "./index.mjs",
       "require": "./index.cjs"
     },
+    "./shared": {
+      "types": "./shared.d.ts",
+      "import": "./shared.mjs",
+      "require": "./shared.cjs"
+    },
+    "./wasm_exec": {
+      "import": "./wasm_exec.mjs",
+      "require": "./wasm_exec.cjs"
+    },
     "./*": "./*"
   },
   "keywords": [
