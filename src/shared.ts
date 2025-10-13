@@ -16,13 +16,13 @@ const coreModuleSet = new Set(
 const _isCoreModule = (id: string) => isNodeProto(id) || coreModuleSet.has(id);
 
 const _fs: {
-  stat: (path: any) => {
+  stat: (path) => {
     exists: boolean;
     isDir: boolean;
     size: number;
     mtime: number;
   };
-  readFile: (path: any) => string;
+  readFile: (path) => string;
 } = {
   stat: (path) => {
     try {
