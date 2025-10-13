@@ -43,7 +43,7 @@ const _fs: {
     }
   },
   readFile: (path) => {
-    return readFileSync(path).toString("base64");
+    return readFileSync(path, "utf-8");
   },
 };
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -43,8 +42,7 @@ func (f jsFS) Stat(path string) (fs.FileInfo, error) {
 }
 
 func (f jsFS) ReadFile(path string) ([]byte, error) {
-	b64 := f.jsObj.Call("readFile", path).String()
-	return base64.StdEncoding.DecodeString(b64)
+	return []byte(f.jsObj.Call("readFile", path).String()), nil
 }
 
 type jsPath struct {
