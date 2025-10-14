@@ -1,6 +1,6 @@
 {
   "extends": ["./node_modules/@startracex/dev-config/dprint-prettier.json"],
-  "includes": ["**/*.ts", "**/*.go"],
+  "includes": ["src/**/*.ts", "src/**/*.js", "**/*.go"],
   "exec": {
     "commands": [
       {
