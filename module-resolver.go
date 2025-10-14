@@ -191,13 +191,13 @@ func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 	return r.resolveDir(subPath, entry)
 }
 
-func (r *ModuleResolver) readJSON(path string) (map[string]interface{}, error) {
+func (r *ModuleResolver) readJSON(path string) (map[string]any, error) {
 	data, err := r.Config.FS.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
