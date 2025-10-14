@@ -15,6 +15,7 @@
       "require": "./shared.cjs"
     },
     "./wasm_exec": {
+      "types": "./wasm_exec.d.ts",
       "import": "./wasm_exec.mjs",
       "require": "./wasm_exec.cjs"
     },
