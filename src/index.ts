@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { type Options, normalizeOptions } from "./shared.js";
-import { Go } from "./wasm_exec.js";
+import { goGlobal, Go } from "./wasm_exec.js";
 
 const go = new Go();
 let loaded = false;
@@ -21,6 +21,5 @@ export const createResolve = async (
   options?: Options,
 ): Promise<(req: string, dir: string) => string> => {
   await init();
-
-  return globalThis["@startracex/node-resolve"](normalizeOptions(options));
+  return goGlobal["@startracex/node-resolve"](normalizeOptions(options));
 };

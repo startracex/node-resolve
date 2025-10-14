@@ -1,60 +1,46 @@
+export const goGlobal = {};
+
+for (const ownKey of Reflect.ownKeys(globalThis)) {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, ownKey);
+  Object.defineProperty(goGlobal, ownKey, descriptor);
+}
+
 const enosys = () => {
   const err = new Error("not implemented");
   err.code = "ENOSYS";
   return err;
 };
 
-if (!globalThis.fs) {
-  let outputBuf = "";
-  globalThis.fs = {
-    constants: {
-      O_WRONLY: -1,
-      O_RDWR: -1,
-      O_CREAT: -1,
-      O_TRUNC: -1,
-      O_APPEND: -1,
-      O_EXCL: -1,
-      O_DIRECTORY: -1,
-    }, // unused
-    writeSync(fd, buf) {
-      outputBuf += decoder.decode(buf);
-      const nl = outputBuf.lastIndexOf("\n");
-      if (nl != -1) {
-        console.log(outputBuf.substring(0, nl));
-        outputBuf = outputBuf.substring(nl + 1);
-      }
-      return buf.length;
-    },
-    write(fd, buf, offset, length, position, callback) {
-      if (offset !== 0 || length !== buf.length || position !== null) {
-        callback(enosys());
-        return;
-      }
-      const n = this.writeSync(fd, buf);
-      callback(null, n);
-    },
-  };
-}
+let outputBuf = "";
 
-if (!globalThis.crypto) {
-  throw new Error(
-    "globalThis.crypto is not available, polyfill required (crypto.getRandomValues only)",
-  );
-}
-
-if (!globalThis.performance) {
-  throw new Error(
-    "globalThis.performance is not available, polyfill required (performance.now only)",
-  );
-}
-
-if (!globalThis.TextEncoder) {
-  throw new Error("globalThis.TextEncoder is not available, polyfill required");
-}
-
-if (!globalThis.TextDecoder) {
-  throw new Error("globalThis.TextDecoder is not available, polyfill required");
-}
+goGlobal.fs = {
+  constants: {
+    O_WRONLY: -1,
+    O_RDWR: -1,
+    O_CREAT: -1,
+    O_TRUNC: -1,
+    O_APPEND: -1,
+    O_EXCL: -1,
+    O_DIRECTORY: -1,
+  }, // unused
+  writeSync(fd, buf) {
+    outputBuf += decoder.decode(buf);
+    const nl = outputBuf.lastIndexOf("\n");
+    if (nl != -1) {
+      console.log(outputBuf.substring(0, nl));
+      outputBuf = outputBuf.substring(nl + 1);
+    }
+    return buf.length;
+  },
+  write(fd, buf, offset, length, position, callback) {
+    if (offset !== 0 || length !== buf.length || position !== null) {
+      callback(enosys());
+      return;
+    }
+    const n = goGlobal.writeSync(fd, buf);
+    callback(null, n);
+  },
+};
 
 const encoder = new TextEncoder("utf-8");
 const decoder = new TextDecoder("utf-8");
@@ -211,7 +197,7 @@ export class Go {
           const fd = getInt64(sp + 8);
           const p = getInt64(sp + 16);
           const n = this.mem.getInt32(sp + 24, true);
-          fs.writeSync(fd, new Uint8Array(this._inst.exports.mem.buffer, p, n));
+          goGlobal.fs.writeSync(fd, new Uint8Array(this._inst.exports.mem.buffer, p, n));
         },
 
         // func resetMemoryDataView()
@@ -241,18 +227,15 @@ export class Go {
           this._nextCallbackTimeoutID++;
           this._scheduledTimeouts.set(
             id,
-            setTimeout(
-              () => {
+            setTimeout(() => {
+              this._resume();
+              while (this._scheduledTimeouts.has(id)) {
+                // for some reason Go failed to register the timeout event, log and try again
+                // (temporary workaround for https://github.com/golang/go/issues/28975)
+                console.warn("scheduleTimeoutEvent: missed timeout event");
                 this._resume();
-                while (this._scheduledTimeouts.has(id)) {
-                  // for some reason Go failed to register the timeout event, log and try again
-                  // (temporary workaround for https://github.com/golang/go/issues/28975)
-                  console.warn("scheduleTimeoutEvent: missed timeout event");
-                  this._resume();
-                }
-              },
-              getInt64(sp + 8),
-            ),
+              }
+            }, getInt64(sp + 8))
           );
           this.mem.setInt32(sp + 16, id, true);
         },
@@ -451,7 +434,7 @@ export class Go {
       null,
       true,
       false,
-      globalThis,
+      goGlobal,
       this,
     ];
     this._goRefCounts = new Array(this._values.length).fill(Infinity); // number of references that Go has to a JS value, indexed by reference id
@@ -461,7 +444,7 @@ export class Go {
       [null, 2],
       [true, 3],
       [false, 4],
-      [globalThis, 5],
+      [goGlobal, 5],
       [this, 6],
     ]);
     this._idPool = []; // unused ids that have been garbage collected
