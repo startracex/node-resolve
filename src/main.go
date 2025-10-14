@@ -22,7 +22,7 @@ func (v *jsFileInfo) Size() int64        { return v.size }
 func (v *jsFileInfo) Mode() fs.FileMode  { return 0 }
 func (v *jsFileInfo) ModTime() time.Time { return v.modTime }
 func (v *jsFileInfo) IsDir() bool        { return v.isDir }
-func (v *jsFileInfo) Sys() interface{}   { return nil }
+func (v *jsFileInfo) Sys() any           { return nil }
 
 type jsFS struct {
 	jsObj js.Value
@@ -54,7 +54,7 @@ func (p jsPath) Dir(path string) string {
 }
 
 func (p jsPath) Join(elem ...string) string {
-	jsArgs := make([]interface{}, len(elem))
+	jsArgs := make([]any, len(elem))
 	for i, e := range elem {
 		jsArgs[i] = e
 	}
@@ -114,7 +114,7 @@ func JSResolve(this js.Value, args []js.Value) any {
 		},
 	})
 
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		return resolver.Resolve(args[0].String(), args[1].String())
 	})
 }
