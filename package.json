@@ -11,6 +11,7 @@
     "@types/node": "^24.7.2",
     "dprint": "^0.50.2",
     "rollup": "^4.52.4",
+    "rollup-plugin-cjs-shim": "^2.0.0",
     "rollup-plugin-oxc": "^0.7.0",
     "typescript": "^5.9.3"
   }

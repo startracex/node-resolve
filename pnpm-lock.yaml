@@ -20,6 +20,9 @@ importers:
       rollup:
         specifier: ^4.52.4
         version: 4.52.4
+      rollup-plugin-cjs-shim:
+        specifier: ^2.0.0
+        version: 2.0.0(rollup@4.52.4)
       rollup-plugin-oxc:
         specifier: ^0.7.0
         version: 0.7.0(rollup@4.52.4)(typescript@5.9.3)
@@ -82,6 +85,9 @@ packages:
 
   '@emnapi/wasi-threads@1.1.0':
     resolution: {integrity: sha512-WI0DdZ8xFSbgMjR1sFsKABJ/C5OnRrjT06JXbZKexJGrDuPTzZdDYfFlsgcCXCyf+suG5QU2e/y1Wo2V/OapLQ==}
+
+  '@jridgewell/sourcemap-codec@1.5.5':
+    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
   '@napi-rs/wasm-runtime@1.0.7':
     resolution: {integrity: sha512-SeDnOO0Tk7Okiq6DbXmmBODgOAb9dp9gjlphokTUxmt8U3liIP1ZsozBahH69j/RJv+Rfs6IwUKHTgQYJ/HBAw==}
@@ -490,6 +496,9 @@ packages:
   '@types/node@24.7.2':
     resolution: {integrity: sha512-/NbVmcGTP+lj5oa4yiYxxeBjRivKQ5Ns1eSZeB99ExsEQ6rX5XYU1Zy/gGxY/ilqtD4Etx9mKyrPxZRetiahhA==}
 
+  cjs-shim@1.0.0:
+    resolution: {integrity: sha512-Vl/Mrn25m1IrxtUEpa/jOtexCr6a5Ih/H/vf6oaUltius0gJ0S4iIKHLZMjorg4PxVXzsO7XSfpBh64LYKyQmw==}
+
   dprint@0.50.2:
     resolution: {integrity: sha512-+0Fzg+17jsMMUouK00/Fara5YtGOuE76EAJINHB8VpkXHd0n00rMXtw/03qorOgz23eo8Y0UpYvNZBJJo3aNtw==}
     hasBin: true
@@ -501,6 +510,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  magic-string@0.30.19:
+    resolution: {integrity: sha512-2N21sPY9Ws53PZvsEpVtNuSW+ScYbQdp4b9qUaL+9QkHUrGFKo56Lg9Emg5s9V/qrtNBmiR01sYhUOwu3H+VOw==}
 
   oxc-minify@0.82.3:
     resolution: {integrity: sha512-iXqx8UITGNp7Ox2X9CW9XmfOBbooXYvPYSbyOu7s9BWmgKNscBl4ySgiYYndZPu1c9TTSbLO6k9XpNvQzb1tWg==}
@@ -516,6 +528,9 @@ packages:
   picomatch@4.0.3:
     resolution: {integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==}
     engines: {node: '>=12'}
+
+  rollup-plugin-cjs-shim@2.0.0:
+    resolution: {integrity: sha512-wbSXChJj2sJK8DIpI8XZsHfYgtKDBlXqURjcEtMILq4mVv6ICJ5ZZGxL86VWL6qebSsKiYp+ABBHWo+FRmGZJg==}
 
   rollup-plugin-oxc@0.7.0:
     resolution: {integrity: sha512-aDKCSE9VJQJDqKO7iRp/5tjPUXZEdXE6CSn5LLJT/yPxcPUQnBlOFnci3RbJkU+gLpeFK+1/tQpYaDf55xEtbw==}
@@ -593,6 +608,8 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
+
+  '@jridgewell/sourcemap-codec@1.5.5': {}
 
   '@napi-rs/wasm-runtime@1.0.7':
     dependencies:
@@ -841,6 +858,11 @@ snapshots:
     dependencies:
       undici-types: 7.14.0
 
+  cjs-shim@1.0.0:
+    dependencies:
+      magic-string: 0.30.19
+      typescript: 5.9.3
+
   dprint@0.50.2:
     optionalDependencies:
       '@dprint/darwin-arm64': 0.50.2
@@ -857,6 +879,10 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  magic-string@0.30.19:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.5.5
 
   oxc-minify@0.82.3:
     optionalDependencies:
@@ -917,6 +943,13 @@ snapshots:
       '@oxc-transform/binding-win32-x64-msvc': 0.82.3
 
   picomatch@4.0.3: {}
+
+  rollup-plugin-cjs-shim@2.0.0(rollup@4.52.4):
+    dependencies:
+      '@rollup/pluginutils': 5.3.0(rollup@4.52.4)
+      cjs-shim: 1.0.0
+    transitivePeerDependencies:
+      - rollup
 
   rollup-plugin-oxc@0.7.0(rollup@4.52.4)(typescript@5.9.3):
     dependencies:

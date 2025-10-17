@@ -10,7 +10,7 @@ const init = async () => {
   if (loaded) {
     return;
   }
-  const wasmPath = join(dirname(fileURLToPath(import.meta.url)), "main.wasm");
+  const wasmPath = join(import.meta.dirname, "main.wasm");
   const buffer = readFileSync(wasmPath);
   const result = await WebAssembly.instantiate(buffer, go.importObject);
   go.run(result.instance);

@@ -1,15 +1,6 @@
 import type { RollupOptions } from "rollup";
+import cjsShim from "rollup-plugin-cjs-shim";
 import oxc from "rollup-plugin-oxc";
-
-function formatTransform() {
-  return {
-    name: "format-transform",
-    transform(code: string) {
-      code = code.replace("dirname(fileURLToPath(import.meta.url))", "__dirname");
-      return { code, map: null };
-    },
-  };
-}
 
 export default [
   {
@@ -45,7 +36,7 @@ export default [
     },
     external: /^node:/,
     plugins: [
-      formatTransform(),
+      cjsShim(),
       oxc({
         minify: true,
         declaration: false,
