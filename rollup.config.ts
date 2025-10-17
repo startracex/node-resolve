@@ -13,7 +13,6 @@ export default [
       dir: "npm",
       format: "esm",
       sourcemap: true,
-      entryFileNames: "[name].mjs",
     },
     external: /^node:/,
     plugins: [
