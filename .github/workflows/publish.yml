@@ -27,6 +27,7 @@ jobs:
         env:
           GOOS: js
           GOARCH: wasm
-      - run: npm publish ./npm --provenance --access public
+      - run: pnpm publish ./npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
