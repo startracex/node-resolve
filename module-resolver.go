@@ -295,5 +295,5 @@ func (r *ModuleResolver) FindUp(startDir, target string) (string, error) {
 		dir = parent
 	}
 
-	return "", ErrInvalidSpecifier
+	return "", ErrNoUpwardsFound
 }
