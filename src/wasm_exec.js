@@ -42,7 +42,7 @@ goGlobal.fs = {
   },
 };
 
-const encoder = new TextEncoder("utf-8");
+const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8");
 
 export class Go {
