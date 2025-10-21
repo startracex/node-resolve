@@ -2,9 +2,7 @@ package resolve
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
-	"strings"
 )
 
 type Specifier struct {
@@ -16,8 +14,7 @@ type Specifier struct {
 }
 
 var (
-	SpecifierRegex = regexp.MustCompile(`^(?:@(\w[\w-.]*)/)?(\w[\w-.]*)(/(.*))?$`)
-
+	SpecifierRegex      = regexp.MustCompile(`^(?:([\w][\w0-9]*):)?(?:(@\w[\w-.]*)/)?(\w[\w-.]*)(/([\w/-]*))?$`)
 	ErrInvalidSpecifier = errors.New("resolve: invalid specifier")
 )
 
@@ -26,26 +23,23 @@ func ParseSpecifier(input string) (*Specifier, error) {
 		return nil, ErrInvalidSpecifier
 	}
 
-	sp := strings.SplitN(input, ":", 2)
-
-	var proto, name string
-
-	if len(sp) > 1 {
-		proto = sp[0]
-		input = strings.Join(sp[1:], ":")
-	}
-
 	match := SpecifierRegex.FindStringSubmatch(input)
-	if match == nil || match[0] == "" || match[2] == "" {
+	if match == nil || match[0] == "" {
 		return nil, ErrInvalidSpecifier
 	}
 
-	scope := match[1]
-	pkg := match[2]
-	path := match[4]
+	proto := match[1]
+	scope := match[2]
+	pkg := match[3]
+	path := match[5]
 
+	if pkg == "" {
+		return nil, ErrInvalidSpecifier
+	}
+
+	var name string
 	if scope != "" {
-		name = fmt.Sprintf("@%s/%s", scope, pkg)
+		name = scope + "/" + pkg
 	} else {
 		name = pkg
 	}
