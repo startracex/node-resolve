@@ -4,7 +4,8 @@
   "scripts": {
     "build": "rollup -c && go build -o npm/main.wasm src/main.go",
     "fmt": "dprint fmt",
-    "check": "dprint check"
+    "check": "dprint check",
+    "test": "go test"
   },
   "devDependencies": {
     "@startracex/dev-config": "^0.5.0",
