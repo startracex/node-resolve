@@ -12,8 +12,8 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       '@types/node':
-        specifier: ^24.9.0
-        version: 24.9.0
+        specifier: ^24.9.1
+        version: 24.9.1
       dprint:
         specifier: ^0.50.2
         version: 0.50.2
@@ -495,8 +495,8 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/node@24.9.0':
-    resolution: {integrity: sha512-MKNwXh3seSK8WurXF7erHPJ2AONmMwkI7zAMrXZDPIru8jRqkk6rGDBVbw4mLwfqA+ZZliiDPg05JQ3uW66tKQ==}
+  '@types/node@24.9.1':
+    resolution: {integrity: sha512-QoiaXANRkSXK6p0Duvt56W208du4P9Uye9hWLWgGMDTEoKPhuenzNcC4vGUmrNkiOKTlIrBoyNQYNpSwfEZXSg==}
 
   cjs-shim@1.0.0:
     resolution: {integrity: sha512-Vl/Mrn25m1IrxtUEpa/jOtexCr6a5Ih/H/vf6oaUltius0gJ0S4iIKHLZMjorg4PxVXzsO7XSfpBh64LYKyQmw==}
@@ -856,7 +856,7 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/node@24.9.0':
+  '@types/node@24.9.1':
     dependencies:
       undici-types: 7.16.0
 
