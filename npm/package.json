@@ -1,0 +1,36 @@
+{
+  "name": "@startracex/node-resolve",
+  "version": "1.0.0",
+  "description": "Node resolve algorithm",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./shared": {
+      "types": "./shared.d.ts",
+      "import": "./shared.js",
+      "require": "./shared.cjs"
+    },
+    "./wasm_exec": {
+      "types": "./wasm_exec.d.ts",
+      "import": "./wasm_exec.js",
+      "require": "./wasm_exec.cjs"
+    },
+    "./*": "./*"
+  },
+  "keywords": [
+    "node",
+    "resolve",
+    "algorithm",
+    "exports"
+  ],
+  "author": "startracex",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/startracex/node-resolve.git"
+  }
+}

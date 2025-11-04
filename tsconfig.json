@@ -1,0 +1,6 @@
+{
+  "extends": "@startracex/dev-config/tsconfig/lib",
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

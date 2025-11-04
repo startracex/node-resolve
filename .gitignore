@@ -1,0 +1,5 @@
+node_modules
+npm/*
+!npm/package.json
+!npm/README.md
+!npm/wasm_exec.d.ts
