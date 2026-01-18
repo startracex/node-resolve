@@ -212,7 +212,7 @@ func TestNewSubpathResolver(t *testing.T) {
 			Conditions: []string{"node"},
 		}
 		r := NewSubpathResolver(cfg)
-		if !reflect.DeepEqual(r.Conditions, []string{"node"}) {
+		if !reflect.DeepEqual(r.Conditions, []string{"node", "default"}) {
 			t.Errorf("expected node condition, got %v", r.Conditions)
 		}
 		if r.Exports["."] != "exportVal" || r.Imports["."] != "importVal" {

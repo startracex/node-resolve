@@ -152,14 +152,25 @@ type SubpathResolverConfig struct {
 	Conditions []string
 }
 
-func NewSubpathResolver(config SubpathResolverConfig) *SubpathResolver {
-	conditions := config.Conditions
-	if conditions == nil {
-		conditions = []string{"default"}
+func NormalizeConditions(slice []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, s := range slice {
+		if s == "default" {
+			continue
+		}
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
 	}
+	result = append(result, "default")
+	return result
+}
 
+func NewSubpathResolver(config SubpathResolverConfig) *SubpathResolver {
 	return &SubpathResolver{
-		Conditions: conditions,
+		Conditions: NormalizeConditions(config.Conditions),
 		Exports:    NormalizeMapping(config.Exports),
 		Imports:    NormalizeMapping(config.Imports),
 	}

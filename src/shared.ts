@@ -2,6 +2,9 @@ import { readFileSync, statSync } from "node:fs";
 import { dirname as dir, join } from "node:path";
 import { builtinModules } from "node:module";
 
+// replace by rollup-plugin-cjs-shim
+const isESM = (typeof import.meta) !== "undefined"
+
 const isNodeProto = (id: string) => id.startsWith("node:");
 
 const coreModuleSet = new Set(
@@ -55,8 +58,6 @@ const _path: {
   join,
 };
 
-const _default = "default";
-
 export type Options = {
   extensions?: string[];
   extensionMap?: {};
@@ -74,7 +75,7 @@ export const normalizeOptions = ({
   extensions = [".js"],
   extensionMap = {},
   mainFields = ["main"],
-  conditions = [_default],
+  conditions = isESM ? ["import"]:["require"],
   indexName = "index",
   modulesDirectoryName = "node_modules",
   manifestFileName = "package.json",
@@ -82,9 +83,6 @@ export const normalizeOptions = ({
   path = _path,
   fs = _fs,
 }: Options = {}): Options => {
-  if (!conditions.includes(_default)) {
-    conditions.push(_default);
-  }
   return {
     extensions,
     extensionMap,
