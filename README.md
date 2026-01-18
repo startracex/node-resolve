@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	resolver := resolve.NewModuleResolver(&resolve.ResolverConfig{
+	resolver := resolve.NewModuleResolver(resolve.ResolverConfig{
 		Extensions: []string{".js", ".ts"},
 		ExtensionMap: map[string][]string{
 			".js": {".ts", ".js"},

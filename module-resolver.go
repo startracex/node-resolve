@@ -11,7 +11,7 @@ import (
 )
 
 type ModuleResolver struct {
-	Config *ResolverConfig
+	ResolverConfig
 }
 
 type FS interface {
@@ -59,7 +59,7 @@ type ResolverConfig struct {
 	Path                 Path
 }
 
-func NewModuleResolver(config *ResolverConfig) *ModuleResolver {
+func NewModuleResolver(config ResolverConfig) *ModuleResolver {
 	if config.ModulesDirectoryName == "" {
 		config.ModulesDirectoryName = "node_modules"
 	}
@@ -82,7 +82,7 @@ func NewModuleResolver(config *ResolverConfig) *ModuleResolver {
 	}
 
 	return &ModuleResolver{
-		Config: config,
+		config,
 	}
 }
 
@@ -94,8 +94,8 @@ func (r *ModuleResolver) ModulesPaths(start string, name string) []string {
 	}
 
 	for {
-		paths = append(paths, r.Config.Path.Join(start, r.Config.ModulesDirectoryName, name))
-		parent := r.Config.Path.Dir(start)
+		paths = append(paths, r.Path.Join(start, r.ModulesDirectoryName, name))
+		parent := r.Path.Dir(start)
 		if parent == start {
 			break
 		}
@@ -105,27 +105,23 @@ func (r *ModuleResolver) ModulesPaths(start string, name string) []string {
 	return paths
 }
 
-func (r *ModuleResolver) stat(path string) (fs.FileInfo, error) {
-	return r.Config.FS.Stat(path)
-}
-
 func (r *ModuleResolver) resolveFile(filePath string) string {
 	candidates := map[string]struct{}{
 		filePath: {},
 	}
 	filePathExt := path.Ext(filePath)
-	if exts, ok := r.Config.ExtensionMap[filePathExt]; ok {
+	if exts, ok := r.ExtensionMap[filePathExt]; ok {
 		base := filePath[:len(filePath)-len(filePathExt)]
 		for _, ext := range exts {
 			candidates[base+ext] = struct{}{}
 		}
 	}
 
-	for _, ext := range r.Config.Extensions {
+	for _, ext := range r.Extensions {
 		candidates[filePath+ext] = struct{}{}
 	}
 	for file := range candidates {
-		stat, err := r.stat(file)
+		stat, err := r.FS.Stat(file)
 		if err != nil || stat.IsDir() {
 			continue
 		}
@@ -138,34 +134,34 @@ func (r *ModuleResolver) resolveFile(filePath string) string {
 }
 
 func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
-	packageJSONPath := r.Config.Path.Join(dirPath, r.Config.ManifestFileName)
-	stat, err := r.stat(packageJSONPath)
+	packageJSONPath := r.Path.Join(dirPath, r.ManifestFileName)
+	stat, err := r.FS.Stat(packageJSONPath)
 
 	if err != nil || stat.IsDir() {
-		if r.Config.IndexName != "" {
+		if r.IndexName != "" {
 			return ""
 		}
-		return r.resolveFile(r.Config.Path.Join(dirPath, r.Config.IndexName))
+		return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
 	}
 
 	var pkg map[string]any
-	if err = readJSON(r.Config.FS, packageJSONPath, &pkg); err != nil {
-		if r.Config.IndexName != "" {
+	if err = readJSON(r.FS, packageJSONPath, &pkg); err != nil {
+		if r.IndexName != "" {
 			return ""
 		}
-		return r.resolveFile(r.Config.Path.Join(dirPath, r.Config.IndexName))
+		return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
 	}
 
 	if exports, ok := pkg["exports"]; ok {
 		exportsResolver := NewSubpathResolver(SubpathResolverConfig{
 			Exports:    exports,
-			Conditions: r.Config.Conditions,
+			Conditions: r.Conditions,
 		})
 		exportsMatchArray := exportsResolver.ResolveExports(entry)
 
 		for _, match := range exportsMatchArray {
-			matchPath := r.Config.Path.Join(dirPath, match)
-			stat, err := r.stat(matchPath)
+			matchPath := r.Path.Join(dirPath, match)
+			stat, err := r.FS.Stat(matchPath)
 			if err == nil && !stat.IsDir() {
 				return matchPath
 			}
@@ -175,10 +171,10 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 	}
 
 	if entry == "" {
-		for _, field := range r.Config.MainFields {
+		for _, field := range r.MainFields {
 			if main, ok := pkg[field].(string); ok && main != "" {
-				mainPath := r.Config.Path.Join(dirPath, main)
-				stat, err := r.stat(mainPath)
+				mainPath := r.Path.Join(dirPath, main)
+				stat, err := r.FS.Stat(mainPath)
 				if err == nil && !stat.IsDir() {
 					return mainPath
 				}
@@ -187,7 +183,7 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 		return ""
 	}
 
-	subPath := r.Config.Path.Join(dirPath, entry)
+	subPath := r.Path.Join(dirPath, entry)
 	return r.resolveFileOrDir(subPath, entry)
 }
 
@@ -199,12 +195,12 @@ func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 }
 
 func (r *ModuleResolver) FindManifest(base string) (map[string]any, error) {
-	path, err := r.FindUp(base, r.Config.ManifestFileName)
+	path, err := r.FindUp(base, r.ManifestFileName)
 	if err != nil {
 		return nil, err
 	}
 	var manifest map[string]any
-	return manifest, readJSON(r.Config.FS, path, &manifest)
+	return manifest, readJSON(r.FS, path, &manifest)
 }
 
 func (r *ModuleResolver) Resolve(path string, base string) string {
@@ -213,14 +209,14 @@ func (r *ModuleResolver) Resolve(path string, base string) string {
 	}
 	spec, err := NewSpecifier(path)
 	if err == nil && spec.Name != "" {
-		if r.Config.IsCoreModule(spec.Name) {
+		if r.IsCoreModule(spec.Name) {
 			return path
 		}
 
 		return r.ResolveModuleSpecifier(spec, base)
 	}
 
-	return r.resolveFileOrDir(r.Config.Path.Join(base, path), "")
+	return r.resolveFileOrDir(r.Path.Join(base, path), "")
 }
 
 func (r *ModuleResolver) ResolveImports(path, base string) string {
@@ -231,12 +227,12 @@ func (r *ModuleResolver) ResolveImports(path, base string) string {
 	if imports, ok := manifest["imports"]; ok {
 		subpathResolver := NewSubpathResolver(SubpathResolverConfig{
 			Imports:    imports,
-			Conditions: r.Config.Conditions,
+			Conditions: r.Conditions,
 		})
 		subpathResolved := subpathResolver.ResolveImports(path)
 		for _, file := range subpathResolved {
-			file = r.Config.Path.Join(base, file)
-			stat, err := r.stat(file)
+			file = r.Path.Join(base, file)
+			stat, err := r.FS.Stat(file)
 			if err != nil || stat.IsDir() {
 				continue
 			}
@@ -251,7 +247,7 @@ func (r *ModuleResolver) ResolveImports(path, base string) string {
 func (r *ModuleResolver) ResolveModuleSpecifier(spec *Specifier, base string) string {
 	dirs := r.ModulesPaths(base, spec.Name)
 	for _, dir := range dirs {
-		stat, err := r.Config.FS.Stat(dir)
+		stat, err := r.FS.Stat(dir)
 		if err == nil && stat.IsDir() {
 			rd := r.resolveDir(dir, spec.Path)
 			if rd != "" {
@@ -266,10 +262,10 @@ var ErrNoUpwardsFound = errors.New("err no upwards found")
 
 func (r *ModuleResolver) FindUp(startDir, target string) (string, error) {
 	dir := startDir
-	filepath := r.Config.Path
+	filepath := r.Path
 	for {
 		candidate := filepath.Join(dir, target)
-		if _, err := r.stat(candidate); err == nil {
+		if _, err := r.FS.Stat(candidate); err == nil {
 			return candidate, nil
 		}
 

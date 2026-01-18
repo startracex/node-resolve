@@ -103,7 +103,7 @@ func JSResolve(this js.Value, args []js.Value) any {
 	arg0 := args[0]
 	fs := jsFS{jsObj: arg0.Get("fs")}
 	path := jsPath{jsObj: arg0.Get("path")}
-	resolver := resolve.NewModuleResolver(&resolve.ResolverConfig{
+	resolver := resolve.NewModuleResolver(resolve.ResolverConfig{
 		Extensions:           toStringSlice(arg0.Get("extensions")),
 		ExtensionMap:         toStringSliceMap(arg0.Get("extensionMap")),
 		ModulesDirectoryName: arg0.Get("modulesDirectoryName").String(),
