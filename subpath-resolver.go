@@ -1,24 +1,42 @@
 package resolve
 
 import (
+	"path"
 	"strings"
 )
+
+func cleanMapPathKeys(m map[string]any) map[string]any {
+	result := make(map[string]any, len(m))
+	for k, v := range m {
+		newKey := k
+		if strings.HasPrefix(newKey, "./") {
+			newKey = "./" + path.Clean(k)
+		}
+
+		if nested, ok := v.(map[string]any); ok {
+			result[newKey] = cleanMapPathKeys(nested)
+		} else {
+			result[newKey] = v
+		}
+	}
+	return result
+}
 
 func NormalizeMapping(m any) map[string]any {
 	if m == nil {
 		return make(map[string]any)
 	}
 
-	if str, ok := m.(string); ok {
-		return map[string]any{".": str}
+	if v, ok := m.(string); ok {
+		return map[string]any{".": v}
 	}
 
-	if arr, ok := m.([]string); ok {
-		return map[string]any{".": arr}
+	if v, ok := m.([]string); ok {
+		return map[string]any{".": v}
 	}
 
-	if mMap, ok := m.(map[string]any); ok {
-		return mMap
+	if v, ok := m.(map[string]any); ok {
+		return cleanMapPathKeys(v)
 	}
 
 	return make(map[string]any)
@@ -115,16 +133,11 @@ func resolveMapping(mapping map[string]any, conditions []string, input string) [
 	return result
 }
 
-const subpathPrefix = "./"
-
 func normalizeEntry(entry string) string {
-	if entry == "" || entry == "." || entry == subpathPrefix {
+	if entry == "" || entry == "." || entry == "./" {
 		return "."
 	}
-	if strings.HasPrefix(entry, subpathPrefix) {
-		return entry
-	}
-	return subpathPrefix + entry
+	return "./" + path.Clean(entry)
 }
 
 type SubpathResolver struct {

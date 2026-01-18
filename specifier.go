@@ -2,6 +2,7 @@ package resolve
 
 import (
 	"errors"
+	"path"
 	"regexp"
 )
 
@@ -31,7 +32,10 @@ func NewSpecifier(input string) (*Specifier, error) {
 	proto := match[1]
 	scope := match[2]
 	pkg := match[3]
-	path := match[5]
+	cleanedPath := match[5]
+	if cleanedPath != "" {
+		cleanedPath = path.Clean(cleanedPath)
+	}
 
 	if pkg == "" {
 		return nil, ErrInvalidSpecifier
@@ -48,7 +52,7 @@ func NewSpecifier(input string) (*Specifier, error) {
 		Proto: proto,
 		Scope: scope,
 		Pkg:   pkg,
-		Path:  path,
+		Path:  cleanedPath,
 		Name:  name,
 	}, nil
 }
