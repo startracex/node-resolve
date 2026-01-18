@@ -140,12 +140,19 @@ func (r *ModuleResolver) resolveFile(filePath string) string {
 func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 	packageJSONPath := r.Config.Path.Join(dirPath, r.Config.ManifestFileName)
 	stat, err := r.stat(packageJSONPath)
+
 	if err != nil || stat.IsDir() {
+		if r.Config.IndexName != "" {
+			return ""
+		}
 		return r.resolveFile(r.Config.Path.Join(dirPath, r.Config.IndexName))
 	}
 
-	pkg, err := r.readJSON(packageJSONPath)
-	if err != nil {
+	var pkg map[string]any
+	if err = readJSON(r.Config.FS, packageJSONPath, &pkg); err != nil {
+		if r.Config.IndexName != "" {
+			return ""
+		}
 		return r.resolveFile(r.Config.Path.Join(dirPath, r.Config.IndexName))
 	}
 
@@ -191,35 +198,13 @@ func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 	return r.resolveDir(subPath, entry)
 }
 
-func (r *ModuleResolver) readJSON(path string) (map[string]any, error) {
-	data, err := r.Config.FS.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func (r *ModuleResolver) FindManifest(base string) (map[string]any, error) {
-	p, err := r.FindUp(base, r.Config.ManifestFileName)
-	if err != nil {
-		return nil, err
-	}
-	content, err := os.ReadFile(p)
+	path, err := r.FindUp(base, r.Config.ManifestFileName)
 	if err != nil {
 		return nil, err
 	}
 	var manifest map[string]any
-	err = json.Unmarshal(content, &manifest)
-	if err != nil {
-		return nil, err
-	}
-	return manifest, err
+	return manifest, readJSON(r.Config.FS, path, &manifest)
 }
 
 func (r *ModuleResolver) Resolve(path string, base string) string {
@@ -296,4 +281,15 @@ func (r *ModuleResolver) FindUp(startDir, target string) (string, error) {
 	}
 
 	return "", ErrNoUpwardsFound
+}
+
+func readJSON(fs FS, path string, v any) error {
+	data, err := fs.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return err
+	}
+	return nil
 }
