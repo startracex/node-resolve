@@ -205,7 +205,7 @@ func (r *ModuleResolver) readJSON(path string) (map[string]any, error) {
 	return result, nil
 }
 
-func (r *ModuleResolver) FindManifest(base string) (map[string]any, any) {
+func (r *ModuleResolver) FindManifest(base string) (map[string]any, error) {
 	p, err := r.FindUp(base, r.Config.ManifestFileName)
 	if err != nil {
 		return nil, err
