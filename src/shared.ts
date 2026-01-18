@@ -3,30 +3,12 @@ import { dirname as dir, join } from "node:path";
 import { builtinModules } from "node:module";
 
 // replace by rollup-plugin-cjs-shim
-const isESM = (typeof import.meta) !== "undefined"
+const isESM = typeof import.meta !== "undefined";
 
-const isNodeProto = (id: string) => id.startsWith("node:");
+const _isCoreModule = (id: string) =>
+  id.startsWith("node:") || builtinModules.some((name) => id == name || id.startsWith(name + "/"));
 
-const coreModuleSet = new Set(
-  builtinModules
-    .filter((id) => !isNodeProto(id))
-    .map((id) => {
-      const index = id.indexOf("/");
-      return index === -1 ? id : id.substring(0, index);
-    }),
-);
-
-const _isCoreModule = (id: string) => isNodeProto(id) || coreModuleSet.has(id);
-
-const _fs: {
-  stat: (path) => {
-    exists: boolean;
-    isDir: boolean;
-    size: number;
-    mtime: number;
-  };
-  readFile: (path) => string;
-} = {
+const _fs = {
   stat: (path) => {
     try {
       const info = statSync(path);
@@ -50,33 +32,41 @@ const _fs: {
   },
 };
 
-const _path: {
-  dir: (path: string) => string;
-  join: (...paths: string[]) => string;
-} = {
+const _path = {
   dir,
   join,
 };
 
 export type Options = {
   extensions?: string[];
-  extensionMap?: {};
+  extensionMap?: Record<string, string[]>;
   mainFields?: string[];
   conditions?: string[];
   indexName?: string;
   modulesDirectoryName?: string;
   manifestFileName?: string;
   isCoreModule?: (id: any) => boolean;
-  path?: typeof _path;
-  fs?: typeof _fs;
+  path?: {
+    dir: (path: string) => string;
+    join: (...paths: string[]) => string;
+  };
+  fs?: {
+    stat: (path: any) => {
+      exists: boolean;
+      isDir: boolean;
+      size: number;
+      mtime: number;
+    };
+    readFile: (path: any) => string;
+  };
 };
 
 export const normalizeOptions = ({
   extensions = [".js"],
   extensionMap = {},
-  mainFields = ["main"],
-  conditions = isESM ? ["import"]:["require"],
-  indexName = "index",
+  mainFields = isESM ? ["module", "main"] : ["main"],
+  conditions = isESM ? ["import"] : ["require"],
+  indexName = isESM ? "" : "index",
   modulesDirectoryName = "node_modules",
   manifestFileName = "package.json",
   isCoreModule = _isCoreModule,
