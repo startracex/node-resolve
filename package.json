@@ -3,8 +3,7 @@
   "private": true,
   "scripts": {
     "build": "rollup -c && go build -o npm/main.wasm src/main.go",
-    "fmt": "dprint fmt",
-    "check": "dprint check",
+    "fmt": "go fmt && dprint fmt",
     "test": "go test"
   },
   "devDependencies": {
