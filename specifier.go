@@ -15,7 +15,7 @@ type Specifier struct {
 }
 
 var (
-	SpecifierRegex      = regexp.MustCompile(`^(?:([\w][\w0-9]*):)?(?:(@[a-z0-9-~][a-z0-9-._~]*)/)?([a-z0-9-][a-z0-9-._]*)(/([\w/-]*))?$`)
+	SpecifierRegex      = regexp.MustCompile(`^(?:([\w][\w0-9]*):)?(?:(@[a-z0-9-~][a-z0-9-._~]*)/)?([a-z0-9-][a-z0-9-._]*)(/(.*))?$`)
 	ErrInvalidSpecifier = errors.New("resolve: invalid specifier")
 )
 
