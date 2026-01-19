@@ -157,17 +157,8 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 			Exports:    exports,
 			Conditions: r.Conditions,
 		})
-		exportsMatchArray := exportsResolver.ResolveExports(entry)
-
-		for _, match := range exportsMatchArray {
-			matchPath := r.Path.Join(dirPath, match)
-			stat, err := r.FS.Stat(matchPath)
-			if err == nil && !stat.IsDir() {
-				return matchPath
-			}
-		}
-
-		return ""
+		subpathResolved := exportsResolver.ResolveExports(entry)
+		return r.resolveDirSubpaths(dirPath, subpathResolved)
 	}
 
 	if entry == "" {
@@ -187,6 +178,18 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 	return r.resolveFileOrDir(subPath, entry)
 }
 
+func (r *ModuleResolver) resolveDirSubpaths(dir string, s []string) string {
+	for _, match := range s {
+		matchPath := r.Path.Join(dir, match)
+		stat, err := r.FS.Stat(matchPath)
+		if err != nil || stat.IsDir() {
+			continue
+		}
+		return matchPath
+	}
+	return ""
+}
+
 func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 	if file := r.resolveFile(subPath); file != "" {
 		return file
@@ -194,8 +197,8 @@ func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 	return r.resolveDir(subPath, entry)
 }
 
-func (r *ModuleResolver) FindManifest(base string) (map[string]any, error) {
-	path, err := r.FindUp(base, r.ManifestFileName)
+func (r *ModuleResolver) FindManifest(dir string) (map[string]any, error) {
+	path, err := r.FindUp(dir, r.ManifestFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +206,9 @@ func (r *ModuleResolver) FindManifest(base string) (map[string]any, error) {
 	return manifest, readJSON(r.FS, path, &manifest)
 }
 
-func (r *ModuleResolver) Resolve(path string, base string) string {
+func (r *ModuleResolver) Resolve(path string, dir string) string {
 	if strings.HasPrefix(path, "#") {
-		return r.ResolveImports(path, base)
+		return r.ResolveImports(path, dir)
 	}
 	spec, err := NewSpecifier(path)
 	if err == nil && spec.Name != "" {
@@ -213,14 +216,14 @@ func (r *ModuleResolver) Resolve(path string, base string) string {
 			return path
 		}
 
-		return r.ResolveModuleSpecifier(spec, base)
+		return r.ResolveModuleSpecifier(spec, dir)
 	}
 
-	return r.resolveFileOrDir(r.Path.Join(base, path), "")
+	return r.resolveFileOrDir(r.Path.Join(dir, path), "")
 }
 
-func (r *ModuleResolver) ResolveImports(path, base string) string {
-	manifest, err := r.FindManifest(base)
+func (r *ModuleResolver) ResolveImports(path, dir string) string {
+	manifest, err := r.FindManifest(dir)
 	if err != nil {
 		return ""
 	}
@@ -230,22 +233,13 @@ func (r *ModuleResolver) ResolveImports(path, base string) string {
 			Conditions: r.Conditions,
 		})
 		subpathResolved := subpathResolver.ResolveImports(path)
-		for _, file := range subpathResolved {
-			file = r.Path.Join(base, file)
-			stat, err := r.FS.Stat(file)
-			if err != nil || stat.IsDir() {
-				continue
-			}
-			if !stat.IsDir() {
-				return file
-			}
-		}
+		return r.resolveDirSubpaths(dir, subpathResolved)
 	}
 	return ""
 }
 
-func (r *ModuleResolver) ResolveModuleSpecifier(spec *Specifier, base string) string {
-	dirs := r.ModulesPaths(base, spec.Name)
+func (r *ModuleResolver) ResolveModuleSpecifier(spec *Specifier, dir string) string {
+	dirs := r.ModulesPaths(dir, spec.Name)
 	for _, dir := range dirs {
 		stat, err := r.FS.Stat(dir)
 		if err == nil && stat.IsDir() {
