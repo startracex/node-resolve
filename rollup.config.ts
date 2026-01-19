@@ -3,7 +3,9 @@ import type { RollupOptions } from "rollup";
 import cjsShim from "rollup-plugin-cjs-shim";
 import oxc from "rollup-plugin-oxc";
 
-const input = globSync("src/**/*.[tj]s");
+const input = globSync("src/**/*.{ts,js}", {
+  exclude: ["**/*.d.ts"],
+});
 const external = /^node:/;
 
 export default [
