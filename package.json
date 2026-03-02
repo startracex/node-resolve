@@ -7,10 +7,10 @@
     "test": "go test"
   },
   "devDependencies": {
-    "@startracex/dev-config": "^0.5.0",
-    "@types/node": "^25.0.6",
-    "dprint": "^0.51.1",
-    "rollup": "^4.55.1",
+    "@startracex/dev-config": "^0.6.0",
+    "@types/node": "^25.3.3",
+    "dprint": "^0.52.0",
+    "rollup": "^4.59.0",
     "rollup-plugin-cjs-shim": "^2.0.0",
     "rollup-plugin-oxc": "^0.7.1",
     "typescript": "^5.9.3"
