@@ -20,5 +20,5 @@ export const createResolve = async (
   options?: Options,
 ): Promise<(req: string, dir: string) => string> => {
   await init();
-  return goGlobal["@startracex/node-resolve"](normalizeOptions(options));
+  return goGlobal["@startracex/node-resolve" as keyof typeof goGlobal](normalizeOptions(options));
 };

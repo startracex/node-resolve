@@ -5,11 +5,21 @@ import { builtinModules } from "node:module";
 // replace by rollup-plugin-cjs-shim
 const isESM = typeof import.meta !== "undefined";
 
-const _isCoreModule = (id: string) =>
-  id.startsWith("node:") || builtinModules.some((name) => id == name || id.startsWith(name + "/"));
+const coreModules = new Set(builtinModules);
+
+const _isCoreModule = (id: string) => {
+  if (id.startsWith("node:")) {
+    return true;
+  }
+  if (coreModules.has(id)) {
+    return true;
+  }
+  const slash = id.indexOf("/");
+  return slash !== -1 && coreModules.has(id.slice(0, slash));
+};
 
 const _fs = {
-  stat: (path) => {
+  stat: (path: string) => {
     try {
       const info = statSync(path);
       return {
@@ -27,7 +37,7 @@ const _fs = {
       };
     }
   },
-  readFile: (path) => {
+  readFile: (path: string) => {
     return readFileSync(path, "utf-8");
   },
 };
