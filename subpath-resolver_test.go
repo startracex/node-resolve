@@ -27,12 +27,30 @@ func TestNormalizeMapping(t *testing.T) {
 			want:  map[string]any{".": []string{"a", "b"}},
 		},
 		{
+			name:  "any slice input",
+			input: []any{"a", "b"},
+			want:  map[string]any{".": []any{"a", "b"}},
+		},
+		{
 			name: "map input",
 			input: map[string]any{
 				".": "value",
 			},
 			want: map[string]any{
 				".": "value",
+			},
+		},
+		{
+			name: "top-level conditional exports",
+			input: map[string]any{
+				"import":  "./esm.js",
+				"require": "./cjs.js",
+			},
+			want: map[string]any{
+				".": map[string]any{
+					"import":  "./esm.js",
+					"require": "./cjs.js",
+				},
 			},
 		},
 		{

@@ -106,31 +106,46 @@ func (r *ModuleResolver) ModulesPaths(start string, name string) []string {
 }
 
 func (r *ModuleResolver) resolveFile(filePath string) string {
-	candidates := map[string]struct{}{
-		filePath: {},
+	var candidates []string
+	seen := map[string]struct{}{}
+	add := func(p string) {
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		candidates = append(candidates, p)
 	}
+
 	filePathExt := path.Ext(filePath)
 	if exts, ok := r.ExtensionMap[filePathExt]; ok {
 		base := filePath[:len(filePath)-len(filePathExt)]
 		for _, ext := range exts {
-			candidates[base+ext] = struct{}{}
+			add(base + ext)
 		}
+	} else {
+		add(filePath)
 	}
 
 	for _, ext := range r.Extensions {
-		candidates[filePath+ext] = struct{}{}
+		add(filePath + ext)
 	}
-	for file := range candidates {
+
+	for _, file := range candidates {
 		stat, err := r.FS.Stat(file)
 		if err != nil || stat.IsDir() {
 			continue
 		}
-		if !stat.IsDir() {
-			return file
-		}
+		return file
 	}
 
 	return ""
+}
+
+func (r *ModuleResolver) resolveIndex(dirPath string) string {
+	if r.IndexName == "" {
+		return ""
+	}
+	return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
 }
 
 func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
@@ -138,18 +153,12 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 	stat, err := r.FS.Stat(packageJSONPath)
 
 	if err != nil || stat.IsDir() {
-		if r.IndexName != "" {
-			return ""
-		}
-		return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
+		return r.resolveIndex(dirPath)
 	}
 
 	var pkg map[string]any
 	if err = readJSON(r.FS, packageJSONPath, &pkg); err != nil {
-		if r.IndexName != "" {
-			return ""
-		}
-		return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
+		return r.resolveIndex(dirPath)
 	}
 
 	if exports, ok := pkg["exports"]; ok {
@@ -165,17 +174,16 @@ func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
 		for _, field := range r.MainFields {
 			if main, ok := pkg[field].(string); ok && main != "" {
 				mainPath := r.Path.Join(dirPath, main)
-				stat, err := r.FS.Stat(mainPath)
-				if err == nil && !stat.IsDir() {
-					return mainPath
+				if resolved := r.resolveFileOrDir(mainPath, ""); resolved != "" {
+					return resolved
 				}
 			}
 		}
-		return ""
+		return r.resolveIndex(dirPath)
 	}
 
 	subPath := r.Path.Join(dirPath, entry)
-	return r.resolveFileOrDir(subPath, entry)
+	return r.resolveFileOrDir(subPath, "")
 }
 
 func (r *ModuleResolver) resolveDirSubpaths(dir string, s []string) string {
@@ -212,7 +220,7 @@ func (r *ModuleResolver) Resolve(path string, dir string) string {
 	}
 	spec, err := NewSpecifier(path)
 	if err == nil && spec.Name != "" {
-		if r.IsCoreModule(spec.Name) {
+		if r.IsCoreModule(path) {
 			return path
 		}
 
@@ -223,8 +231,12 @@ func (r *ModuleResolver) Resolve(path string, dir string) string {
 }
 
 func (r *ModuleResolver) ResolveImports(path, dir string) string {
-	manifest, err := r.FindManifest(dir)
+	manifestPath, err := r.FindUp(dir, r.ManifestFileName)
 	if err != nil {
+		return ""
+	}
+	var manifest map[string]any
+	if err := readJSON(r.FS, manifestPath, &manifest); err != nil {
 		return ""
 	}
 	if imports, ok := manifest["imports"]; ok {
@@ -233,7 +245,7 @@ func (r *ModuleResolver) ResolveImports(path, dir string) string {
 			Conditions: r.Conditions,
 		})
 		subpathResolved := subpathResolver.ResolveImports(path)
-		return r.resolveDirSubpaths(dir, subpathResolved)
+		return r.resolveDirSubpaths(r.Path.Dir(manifestPath), subpathResolved)
 	}
 	return ""
 }

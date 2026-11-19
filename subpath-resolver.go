@@ -22,6 +22,10 @@ func cleanMapPathKeys(m map[string]any) map[string]any {
 	return result
 }
 
+func isPathMappingKey(key string) bool {
+	return key == "." || strings.HasPrefix(key, "./") || strings.HasPrefix(key, "#")
+}
+
 func NormalizeMapping(m any) map[string]any {
 	if m == nil {
 		return make(map[string]any)
@@ -35,7 +39,22 @@ func NormalizeMapping(m any) map[string]any {
 		return map[string]any{".": v}
 	}
 
+	if v, ok := m.([]any); ok {
+		return map[string]any{".": v}
+	}
+
 	if v, ok := m.(map[string]any); ok {
+		hasPathKey := false
+		for k := range v {
+			if isPathMappingKey(k) {
+				hasPathKey = true
+				break
+			}
+		}
+		// Top-level conditional exports/imports without path keys are sugar for ".".
+		if !hasPathKey {
+			return map[string]any{".": v}
+		}
 		return cleanMapPathKeys(v)
 	}
 
