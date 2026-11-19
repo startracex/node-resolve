@@ -69,6 +69,7 @@ func NewModuleResolver(config ResolverConfig) *ModuleResolver {
 	if len(config.MainFields) == 0 {
 		config.MainFields = []string{"main"}
 	}
+	config.Conditions = NormalizeConditions(config.Conditions)
 	if config.IsCoreModule == nil {
 		config.IsCoreModule = func(s string) bool {
 			return strings.HasPrefix(s, "node:")
@@ -148,26 +149,31 @@ func (r *ModuleResolver) resolveIndex(dirPath string) string {
 	return r.resolveFile(r.Path.Join(dirPath, r.IndexName))
 }
 
-func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
-	packageJSONPath := r.Path.Join(dirPath, r.ManifestFileName)
-	stat, err := r.FS.Stat(packageJSONPath)
-
+func (r *ModuleResolver) loadPackage(manifestPath string) (map[string]any, bool) {
+	stat, err := r.FS.Stat(manifestPath)
 	if err != nil || stat.IsDir() {
-		return r.resolveIndex(dirPath)
+		return nil, false
 	}
 
 	var pkg map[string]any
-	if err = readJSON(r.FS, packageJSONPath, &pkg); err != nil {
+	if err = readJSON(r.FS, manifestPath, &pkg); err != nil {
+		return nil, false
+	}
+	return pkg, true
+}
+
+func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
+	pkg, ok := r.loadPackage(r.Path.Join(dirPath, r.ManifestFileName))
+	if !ok {
 		return r.resolveIndex(dirPath)
 	}
 
-	if exports, ok := pkg["exports"]; ok {
+	if exports, hasExports := pkg["exports"]; hasExports {
 		exportsResolver := NewSubpathResolver(SubpathResolverConfig{
 			Exports:    exports,
 			Conditions: r.Conditions,
 		})
-		subpathResolved := exportsResolver.ResolveExports(entry)
-		return r.resolveDirSubpaths(dirPath, subpathResolved)
+		return r.resolveDirSubpaths(dirPath, exportsResolver.ResolveExports(entry))
 	}
 
 	if entry == "" {
@@ -206,60 +212,74 @@ func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
 }
 
 func (r *ModuleResolver) FindManifest(dir string) (map[string]any, error) {
-	path, err := r.FindUp(dir, r.ManifestFileName)
+	manifestPath, err := r.FindUp(dir, r.ManifestFileName)
 	if err != nil {
 		return nil, err
 	}
-	var manifest map[string]any
-	return manifest, readJSON(r.FS, path, &manifest)
+	pkg, ok := r.loadPackage(manifestPath)
+	if !ok {
+		return nil, ErrNoUpwardsFound
+	}
+	return pkg, nil
 }
 
-func (r *ModuleResolver) Resolve(path string, dir string) string {
-	if strings.HasPrefix(path, "#") {
-		return r.ResolveImports(path, dir)
+func (r *ModuleResolver) Resolve(request string, dir string) string {
+	if strings.HasPrefix(request, "#") {
+		return r.ResolveImports(request, dir)
 	}
-	spec, err := NewSpecifier(path)
+	spec, err := NewSpecifier(request)
 	if err == nil && spec.Name != "" {
-		if r.IsCoreModule(path) {
-			return path
+		if r.IsCoreModule(request) {
+			return request
 		}
 
 		return r.ResolveModuleSpecifier(spec, dir)
 	}
 
-	return r.resolveFileOrDir(r.Path.Join(dir, path), "")
+	return r.resolveFileOrDir(r.Path.Join(dir, request), "")
 }
 
-func (r *ModuleResolver) ResolveImports(path, dir string) string {
+func (r *ModuleResolver) ResolveImports(request, dir string) string {
 	manifestPath, err := r.FindUp(dir, r.ManifestFileName)
 	if err != nil {
 		return ""
 	}
-	var manifest map[string]any
-	if err := readJSON(r.FS, manifestPath, &manifest); err != nil {
+	pkgRoot := r.Path.Dir(manifestPath)
+	pkg, ok := r.loadPackage(manifestPath)
+	if !ok {
 		return ""
 	}
-	if imports, ok := manifest["imports"]; ok {
-		subpathResolver := NewSubpathResolver(SubpathResolverConfig{
-			Imports:    imports,
-			Conditions: r.Conditions,
-		})
-		subpathResolved := subpathResolver.ResolveImports(path)
-		return r.resolveDirSubpaths(r.Path.Dir(manifestPath), subpathResolved)
+	imports, hasImports := pkg["imports"]
+	if !hasImports {
+		return ""
 	}
-	return ""
+	importsResolver := NewSubpathResolver(SubpathResolverConfig{
+		Imports:    imports,
+		Conditions: r.Conditions,
+	})
+	return r.resolveDirSubpaths(pkgRoot, importsResolver.ResolveImports(request))
 }
 
 func (r *ModuleResolver) ResolveModuleSpecifier(spec *Specifier, dir string) string {
-	dirs := r.ModulesPaths(dir, spec.Name)
-	for _, dir := range dirs {
-		stat, err := r.FS.Stat(dir)
+	if dir == "" {
+		return ""
+	}
+
+	// Walk parents lazily instead of allocating the full candidate list.
+	start := dir
+	for {
+		candidate := r.Path.Join(start, r.ModulesDirectoryName, spec.Name)
+		stat, err := r.FS.Stat(candidate)
 		if err == nil && stat.IsDir() {
-			rd := r.resolveDir(dir, spec.Path)
-			if rd != "" {
+			if rd := r.resolveDir(candidate, spec.Path); rd != "" {
 				return rd
 			}
 		}
+		parent := r.Path.Dir(start)
+		if parent == start {
+			break
+		}
+		start = parent
 	}
 	return ""
 }

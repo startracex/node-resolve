@@ -2,7 +2,6 @@
 
 ```go
 import (
-	"strings"
 	"os"
 
 	resolve "github.com/startracex/node-resolve"

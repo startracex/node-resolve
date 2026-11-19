@@ -41,11 +41,13 @@ func (f jsFS) Stat(path string) (fs.FileInfo, error) {
 	}, nil
 }
 
-func (f jsFS) ReadFile(path string) ([]byte, error) {
-	result := f.jsObj.Call("stat", path)
-	if !result.Get("exists").Bool() {
-		return nil, os.ErrNotExist
-	}
+func (f jsFS) ReadFile(path string) (content []byte, err error) {
+	defer func() {
+		if recover() != nil {
+			content = nil
+			err = os.ErrNotExist
+		}
+	}()
 	return []byte(f.jsObj.Call("readFile", path).String()), nil
 }
 

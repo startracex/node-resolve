@@ -172,14 +172,14 @@ type SubpathResolverConfig struct {
 }
 
 func NormalizeConditions(slice []string) []string {
-	seen := make(map[string]bool)
+	seen := make(map[string]struct{})
 	var result []string
 	for _, s := range slice {
 		if s == "default" {
 			continue
 		}
-		if !seen[s] {
-			seen[s] = true
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
 			result = append(result, s)
 		}
 	}
