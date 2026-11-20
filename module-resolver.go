@@ -22,6 +22,7 @@ type FS interface {
 type Path interface {
 	Dir(path string) string
 	Join(elem ...string) string
+	IsAbs(path string) bool
 }
 
 type osPath struct {
@@ -33,6 +34,10 @@ func (*osPath) Dir(path string) string {
 
 func (*osPath) Join(elem ...string) string {
 	return filepath.Join(elem...)
+}
+
+func (*osPath) IsAbs(path string) bool {
+	return filepath.IsAbs(path)
 }
 
 type osFS struct {
@@ -87,22 +92,41 @@ func NewModuleResolver(config ResolverConfig) *ModuleResolver {
 	}
 }
 
-func (r *ModuleResolver) ModulesPaths(start string, name string) []string {
-	var paths []string
-
-	if start == "" {
-		return paths
+func (r *ModuleResolver) isModulesDirectorySegment(dir string) bool {
+	parent := r.Path.Dir(dir)
+	if parent == dir {
+		return dir == r.ModulesDirectoryName
 	}
+	return r.Path.Join(parent, r.ModulesDirectoryName) == dir
+}
 
+// NodeModulesPaths returns node_modules directories to search, matching NODE_MODULES_PATHS.
+// Segments already named ModulesDirectoryName are skipped.
+func (r *ModuleResolver) NodeModulesPaths(start string) []string {
+	var dirs []string
+	if start == "" {
+		return dirs
+	}
+	dir := start
 	for {
-		paths = append(paths, r.Path.Join(start, r.ModulesDirectoryName, name))
-		parent := r.Path.Dir(start)
-		if parent == start {
+		if !r.isModulesDirectorySegment(dir) {
+			dirs = append(dirs, r.Path.Join(dir, r.ModulesDirectoryName))
+		}
+		parent := r.Path.Dir(dir)
+		if parent == dir {
 			break
 		}
-		start = parent
+		dir = parent
 	}
+	return dirs
+}
 
+func (r *ModuleResolver) ModulesPaths(start string, name string) []string {
+	nms := r.NodeModulesPaths(start)
+	paths := make([]string, len(nms))
+	for i, nm := range nms {
+		paths[i] = r.Path.Join(nm, name)
+	}
 	return paths
 }
 
@@ -162,53 +186,50 @@ func (r *ModuleResolver) loadPackage(manifestPath string) (map[string]any, bool)
 	return pkg, true
 }
 
-func (r *ModuleResolver) resolveDir(dirPath string, entry string) string {
+// resolveDir implements LOAD_AS_DIRECTORY (main / index only; not exports).
+func (r *ModuleResolver) resolveDir(dirPath string) string {
 	pkg, ok := r.loadPackage(r.Path.Join(dirPath, r.ManifestFileName))
 	if !ok {
 		return r.resolveIndex(dirPath)
 	}
 
-	if exports, hasExports := pkg["exports"]; hasExports {
-		exportsResolver := NewSubpathResolver(SubpathResolverConfig{
-			Exports:    exports,
-			Conditions: r.Conditions,
-		})
-		return r.resolveDirSubpaths(dirPath, exportsResolver.ResolveExports(entry))
-	}
-
-	if entry == "" {
-		for _, field := range r.MainFields {
-			if main, ok := pkg[field].(string); ok && main != "" {
-				mainPath := r.Path.Join(dirPath, main)
-				if resolved := r.resolveFileOrDir(mainPath, ""); resolved != "" {
-					return resolved
-				}
+	for _, field := range r.MainFields {
+		if main, ok := pkg[field].(string); ok && main != "" {
+			mainPath := r.Path.Join(dirPath, main)
+			if resolved := r.resolveFileOrDir(mainPath); resolved != "" {
+				return resolved
 			}
 		}
-		return r.resolveIndex(dirPath)
 	}
-
-	subPath := r.Path.Join(dirPath, entry)
-	return r.resolveFileOrDir(subPath, "")
+	return r.resolveIndex(dirPath)
 }
 
-func (r *ModuleResolver) resolveDirSubpaths(dir string, s []string) string {
-	for _, match := range s {
-		matchPath := r.Path.Join(dir, match)
-		stat, err := r.FS.Stat(matchPath)
-		if err != nil || stat.IsDir() {
+// resolveExactFile implements RESOLVE_ESM_MATCH: the target must exist as a file.
+func (r *ModuleResolver) resolveExactFile(filePath string) string {
+	stat, err := r.FS.Stat(filePath)
+	if err != nil || stat.IsDir() {
+		return ""
+	}
+	return filePath
+}
+
+func (r *ModuleResolver) resolveDirSubpaths(dir string, targets []string) string {
+	for _, match := range targets {
+		if match == "" {
 			continue
 		}
-		return matchPath
+		if resolved := r.resolveExactFile(r.Path.Join(dir, match)); resolved != "" {
+			return resolved
+		}
 	}
 	return ""
 }
 
-func (r *ModuleResolver) resolveFileOrDir(subPath string, entry string) string {
+func (r *ModuleResolver) resolveFileOrDir(subPath string) string {
 	if file := r.resolveFile(subPath); file != "" {
 		return file
 	}
-	return r.resolveDir(subPath, entry)
+	return r.resolveDir(subPath)
 }
 
 func (r *ModuleResolver) FindManifest(dir string) (map[string]any, error) {
@@ -224,19 +245,79 @@ func (r *ModuleResolver) FindManifest(dir string) (map[string]any, error) {
 }
 
 func (r *ModuleResolver) Resolve(request string, dir string) string {
+	if r.Path.IsAbs(request) {
+		return r.resolveFileOrDir(request)
+	}
+
+	if IsRelPath(request) {
+		return r.resolveFileOrDir(r.Path.Join(dir, request))
+	}
+
 	if strings.HasPrefix(request, "#") {
 		return r.ResolveImports(request, dir)
 	}
-	spec, err := NewSpecifier(request)
-	if err == nil && spec.Name != "" {
-		if r.IsCoreModule(request) {
-			return request
-		}
 
-		return r.ResolveModuleSpecifier(spec, dir)
+	if r.IsCoreModule(request) {
+		return request
 	}
 
-	return r.resolveFileOrDir(r.Path.Join(dir, request), "")
+	spec, err := NewSpecifier(request)
+	if err != nil || spec.Name == "" {
+		return r.resolveFileOrDir(r.Path.Join(dir, request))
+	}
+
+	// LOAD_PACKAGE_SELF: if handled (name+exports), do not fall through.
+	if result, stop := r.ResolvePackageSelf(spec, dir); stop {
+		return result
+	}
+
+	return r.ResolveModuleSpecifier(spec, dir)
+}
+
+// loadPackageExports implements LOAD_PACKAGE_EXPORTS.
+// handled=false means exports is absent/null (fall through).
+// handled=true means exports was consulted; result may be empty (like throw).
+func (r *ModuleResolver) loadPackageExports(packageDir, entry string) (string, bool) {
+	pkg, ok := r.loadPackage(r.Path.Join(packageDir, r.ManifestFileName))
+	if !ok {
+		return "", false
+	}
+	exports, hasExports := pkg["exports"]
+	if !hasExports || exports == nil {
+		return "", false
+	}
+	exportsResolver := NewSubpathResolver(SubpathResolverConfig{
+		Exports:    exports,
+		Conditions: r.Conditions,
+	})
+	return r.resolveDirSubpaths(packageDir, exportsResolver.ResolveExports(entry)), true
+}
+
+// ResolvePackageSelf implements LOAD_PACKAGE_SELF.
+// stop=true means the self package matched and resolution must not continue.
+func (r *ModuleResolver) ResolvePackageSelf(spec *Specifier, dir string) (string, bool) {
+	manifestPath, err := r.FindUp(dir, r.ManifestFileName)
+	if err != nil {
+		return "", false
+	}
+	pkg, ok := r.loadPackage(manifestPath)
+	if !ok {
+		return "", false
+	}
+	exports, hasExports := pkg["exports"]
+	if !hasExports || exports == nil {
+		return "", false
+	}
+	name, _ := pkg["name"].(string)
+	if name == "" || name != spec.Name {
+		return "", false
+	}
+	pkgRoot := r.Path.Dir(manifestPath)
+	exportsResolver := NewSubpathResolver(SubpathResolverConfig{
+		Exports:    exports,
+		Conditions: r.Conditions,
+	})
+	return r.resolveDirSubpaths(pkgRoot, exportsResolver.ResolveExports(spec.Path)), true
 }
 
 func (r *ModuleResolver) ResolveImports(request, dir string) string {
@@ -250,36 +331,61 @@ func (r *ModuleResolver) ResolveImports(request, dir string) string {
 		return ""
 	}
 	imports, hasImports := pkg["imports"]
-	if !hasImports {
+	if !hasImports || imports == nil {
 		return ""
 	}
 	importsResolver := NewSubpathResolver(SubpathResolverConfig{
 		Imports:    imports,
 		Conditions: r.Conditions,
 	})
-	return r.resolveDirSubpaths(pkgRoot, importsResolver.ResolveImports(request))
+	return r.resolveImportTargets(pkgRoot, importsResolver.ResolveImports(request))
 }
 
+func (r *ModuleResolver) resolveImportTargets(pkgRoot string, targets []string) string {
+	for _, match := range targets {
+		if match == "" {
+			continue
+		}
+		if r.Path.IsAbs(match) {
+			if resolved := r.resolveExactFile(match); resolved != "" {
+				return resolved
+			}
+			continue
+		}
+		if IsRelPath(match) {
+			if resolved := r.resolveExactFile(r.Path.Join(pkgRoot, match)); resolved != "" {
+				return resolved
+			}
+			continue
+		}
+		// Bare / package targets are resolved again from the package scope.
+		if resolved := r.Resolve(match, pkgRoot); resolved != "" {
+			return resolved
+		}
+	}
+	return ""
+}
+
+// ResolveModuleSpecifier implements LOAD_NODE_MODULES.
 func (r *ModuleResolver) ResolveModuleSpecifier(spec *Specifier, dir string) string {
 	if dir == "" {
 		return ""
 	}
 
-	// Walk parents lazily instead of allocating the full candidate list.
-	start := dir
-	for {
-		candidate := r.Path.Join(start, r.ModulesDirectoryName, spec.Name)
-		stat, err := r.FS.Stat(candidate)
-		if err == nil && stat.IsDir() {
-			if rd := r.resolveDir(candidate, spec.Path); rd != "" {
-				return rd
-			}
+	for _, modulesDir := range r.NodeModulesPaths(dir) {
+		packageDir := r.Path.Join(modulesDir, spec.Name)
+
+		if resolved, handled := r.loadPackageExports(packageDir, spec.Path); handled {
+			return resolved
 		}
-		parent := r.Path.Dir(start)
-		if parent == start {
-			break
+
+		target := packageDir
+		if spec.Path != "" {
+			target = r.Path.Join(packageDir, spec.Path)
 		}
-		start = parent
+		if resolved := r.resolveFileOrDir(target); resolved != "" {
+			return resolved
+		}
 	}
 	return ""
 }
@@ -314,4 +420,25 @@ func readJSON(fs FS, path string, v any) error {
 		return err
 	}
 	return nil
+}
+
+// IsRelPath reports whether s looks like a filesystem path specifier.
+func IsRelPath(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	dot := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '/' || c == '\\' {
+			return i != 0 && dot <= 2
+		}
+		if c == '.' && dot < 2 {
+			dot++
+			continue
+		}
+		return false
+	}
+	return dot == 1 || dot == 2
 }

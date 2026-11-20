@@ -67,6 +67,10 @@ func (p jsPath) Join(elem ...string) string {
 	return p.jsObj.Call("join", jsArgs...).String()
 }
 
+func (p jsPath) IsAbs(path string) bool {
+	return p.jsObj.Call("isAbs", path).Bool()
+}
+
 func toStringSlice(jsVal js.Value) []string {
 	if jsVal.IsUndefined() || jsVal.IsNull() {
 		return nil

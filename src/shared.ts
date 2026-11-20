@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from "node:fs";
-import { dirname as dir, join } from "node:path";
+import { dirname as dir, join, isAbsolute as isAbs } from "node:path";
 import { builtinModules } from "node:module";
 
 // replace by rollup-plugin-cjs-shim
@@ -45,6 +45,7 @@ const _fs = {
 const _path = {
   dir,
   join,
+  isAbs,
 };
 
 export type Options = {
@@ -59,6 +60,7 @@ export type Options = {
   path?: {
     dir: (path: string) => string;
     join: (...paths: string[]) => string;
+    isAbs: (path: string) => boolean;
   };
   fs?: {
     stat: (path: any) => {
@@ -75,7 +77,7 @@ export const normalizeOptions = ({
   extensions = [".js"],
   extensionMap = {},
   mainFields = isESM ? ["module", "main"] : ["main"],
-  conditions = isESM ? ["import"] : ["require"],
+  conditions = isESM ? ["node", "import"] : ["node", "require"],
   indexName = isESM ? "" : "index",
   modulesDirectoryName = "node_modules",
   manifestFileName = "package.json",

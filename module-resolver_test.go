@@ -258,3 +258,153 @@ func TestNormalizeMappingAnySlice(t *testing.T) {
 		t.Fatalf("NormalizeMapping() = %#v, want %#v", got, want)
 	}
 }
+
+func TestResolveExportsMissDoesNotFallThrough(t *testing.T) {
+	fsys := newMemFS()
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "package.json"), `{
+		"exports": { ".": "./dist/main.js" }
+	}`)
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "dist", "main.js"), "")
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "secret.js"), "")
+	fsys.addFile(filepath.Join("node_modules", "demo", "package.json"), `{"main":"./index.js"}`)
+	fsys.addFile(filepath.Join("node_modules", "demo", "index.js"), "")
+	fsys.addFile(filepath.Join("node_modules", "demo", "secret.js"), "")
+
+	r := NewModuleResolver(ResolverConfig{
+		Extensions: []string{".js"},
+		MainFields: []string{"main"},
+		FS:         fsys,
+	})
+
+	if got := r.Resolve("demo/secret.js", "proj"); got != "" {
+		t.Fatalf("exports miss should stop resolution, got %q", got)
+	}
+	if got := r.Resolve("demo/secret", "proj"); got != "" {
+		t.Fatalf("exports miss should stop resolution, got %q", got)
+	}
+}
+
+func TestResolvePackageSelf(t *testing.T) {
+	fsys := newMemFS()
+	fsys.addFile(filepath.Join("proj", "package.json"), `{
+		"name": "demo",
+		"exports": {
+			".": "./src/main.js",
+			"./util": "./src/util.js"
+		}
+	}`)
+	fsys.addFile(filepath.Join("proj", "src", "main.js"), "")
+	fsys.addFile(filepath.Join("proj", "src", "util.js"), "")
+	// Shadowing node_modules copy should not win for self name.
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "package.json"), `{"main":"./wrong.js"}`)
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "wrong.js"), "")
+
+	r := NewModuleResolver(ResolverConfig{
+		Extensions: []string{".js"},
+		MainFields: []string{"main"},
+		FS:         fsys,
+	})
+
+	got := r.Resolve("demo", filepath.Join("proj", "src"))
+	want := filepath.Join("proj", "src", "main.js")
+	if got != want {
+		t.Fatalf("Resolve(demo) = %q, want %q", got, want)
+	}
+
+	got = r.Resolve("demo/util", filepath.Join("proj", "src"))
+	want = filepath.Join("proj", "src", "util.js")
+	if got != want {
+		t.Fatalf("Resolve(demo/util) = %q, want %q", got, want)
+	}
+}
+
+func TestNodeModulesPathsSkipsModulesSegment(t *testing.T) {
+	r := NewModuleResolver(ResolverConfig{})
+	start := filepath.Join("proj", "node_modules", "pkg", "lib")
+	got := r.NodeModulesPaths(start)
+
+	var unexpected string
+	for _, p := range got {
+		if strings.Contains(p, filepath.Join("node_modules", "node_modules")) {
+			unexpected = p
+			break
+		}
+	}
+	if unexpected != "" {
+		t.Fatalf("NodeModulesPaths included nested modules path %q: %#v", unexpected, got)
+	}
+
+	wantPrefix := filepath.Join("proj", "node_modules", "pkg", "lib", "node_modules")
+	if len(got) == 0 || got[0] != wantPrefix {
+		t.Fatalf("NodeModulesPaths()[0] = %q, want %q (full=%#v)", firstOrEmpty(got), wantPrefix, got)
+	}
+}
+
+func firstOrEmpty(s []string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return s[0]
+}
+
+func TestResolveImportsPackageTarget(t *testing.T) {
+	fsys := newMemFS()
+	fsys.addFile(filepath.Join("proj", "package.json"), `{
+		"imports": {
+			"#dep": "dep-pkg"
+		}
+	}`)
+	fsys.addFile(filepath.Join("proj", "node_modules", "dep-pkg", "package.json"), `{"main":"./index.js"}`)
+	fsys.addFile(filepath.Join("proj", "node_modules", "dep-pkg", "index.js"), "")
+
+	r := NewModuleResolver(ResolverConfig{
+		Extensions: []string{".js"},
+		MainFields: []string{"main"},
+		FS:         fsys,
+	})
+
+	got := r.Resolve("#dep", filepath.Join("proj", "src"))
+	want := filepath.Join("proj", "node_modules", "dep-pkg", "index.js")
+	if got != want {
+		t.Fatalf("Resolve(#dep) = %q, want %q", got, want)
+	}
+}
+
+func TestResolveSubpathWithoutExportsUsesFile(t *testing.T) {
+	fsys := newMemFS()
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "package.json"), `{"main":"./index.js"}`)
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "index.js"), "")
+	fsys.addFile(filepath.Join("proj", "node_modules", "demo", "lib", "util.js"), "")
+
+	r := NewModuleResolver(ResolverConfig{
+		Extensions: []string{".js"},
+		MainFields: []string{"main"},
+		FS:         fsys,
+	})
+
+	got := r.Resolve("demo/lib/util", "proj")
+	want := filepath.Join("proj", "node_modules", "demo", "lib", "util.js")
+	if got != want {
+		t.Fatalf("Resolve(demo/lib/util) = %q, want %q", got, want)
+	}
+}
+
+func TestResolveAbsoluteRequest(t *testing.T) {
+	fsys := newMemFS()
+	abs := "/abs/file.js"
+	if filepath.Separator != '/' {
+		abs = `C:\abs\file.js`
+	}
+	fsys.addFile(abs, "")
+
+	r := NewModuleResolver(ResolverConfig{
+		Extensions: []string{".js"},
+		FS:         fsys,
+	})
+
+	got := r.Resolve(abs, "proj")
+	want := filepath.Clean(abs)
+	if got != want {
+		t.Fatalf("Resolve(absolute) = %q, want %q", got, want)
+	}
+}
